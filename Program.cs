@@ -8,13 +8,9 @@ using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ✅ Add SignalR
 builder.Services.AddSignalR();
-
-// ✅ Add HttpClient for internal API calls
 builder.Services.AddHttpClient();
 
-// ✅ Configure Authentication (JWT) with SignalR support
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -27,15 +23,12 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateIssuer = false,
             ValidateAudience = false
         };
-
-        // ✅ NEW: Configure JWT for SignalR
         options.Events = new JwtBearerEvents
         {
             OnMessageReceived = context =>
             {
                 var accessToken = context.Request.Query["access_token"];
                 var path = context.HttpContext.Request.Path;
-
                 if (!string.IsNullOrEmpty(accessToken) &&
                     (path.StartsWithSegments("/notificationHub")))
                 {
@@ -46,7 +39,6 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-// ✅ Configure Authorization
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("AdminPolicy", policy => policy.RequireRole("Admin"));
@@ -54,7 +46,6 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("PatientPolicy", policy => policy.RequireRole("Patient"));
 });
 
-// ✅ Add Swagger with JWT Support
 builder.Services.AddSwaggerGen(c =>
 {
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
@@ -66,7 +57,6 @@ builder.Services.AddSwaggerGen(c =>
         In = ParameterLocation.Header,
         Description = "Enter 'Bearer <your_token>'"
     });
-
     c.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         {
@@ -83,16 +73,13 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// ✅ Add services
 builder.Services.AddControllers().AddNewtonsoftJson();
 builder.Services.AddEndpointsApiExplorer();
 
-// ✅ Configure Database
 builder.Services.AddDbContext<HospitalDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
 );
 
-// ✅ Configure CORS (Updated for SignalR)
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
@@ -101,33 +88,36 @@ builder.Services.AddCors(options =>
             "http://localhost:3000",
             "http://localhost:5173",
             "https://localhost:3000",
-            "https://localhost:5173"
+            "https://localhost:5173",
+            "https://healthspan-frontend-2hud.vercel.app"
         )
         .AllowAnyHeader()
         .AllowAnyMethod()
-        .AllowCredentials(); // Required for SignalR
+        .AllowCredentials();
     });
 });
 
 var app = builder.Build();
 
-// ✅ Middleware Configuration (ORDER MATTERS!)
 app.UseHttpsRedirection();
-app.UseCors("AllowFrontend"); // Must be before Authentication
+app.UseCors("AllowFrontend");
 app.UseAuthentication();
 app.UseAuthorization();
 
-// ✅ Enable Swagger
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
-// ✅ Map Controllers
 app.MapControllers();
-
-// ✅ NEW: Map SignalR Hub
 app.MapHub<Hospital_Managemant_System.NotificationHub>("/notificationHub");
+
+// ✅ Auto migrate on startup
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<HospitalDbContext>();
+    db.Database.Migrate();
+}
 
 app.Run();
