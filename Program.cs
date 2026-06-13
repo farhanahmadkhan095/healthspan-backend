@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
@@ -99,7 +99,7 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// app.UseHttpsRedirection();
+app.UseHttpsRedirection();
 app.UseCors("AllowFrontend");
 app.UseAuthentication();
 app.UseAuthorization();
@@ -113,11 +113,11 @@ if (app.Environment.IsDevelopment())
 app.MapControllers();
 app.MapHub<Hospital_Managemant_System.NotificationHub>("/notificationHub");
 
-// ? Auto migrate on startup
+// ✅ Auto migrate on startup
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<HospitalDbContext>();
     db.Database.Migrate();
 }
 
-var port = Environment.GetEnvironmentVariable("PORT") ?? "5000"; app.Run(\$"http://0.0.0.0:{port}");
+app.Run();
