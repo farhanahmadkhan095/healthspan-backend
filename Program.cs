@@ -99,7 +99,7 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-app.UseHttpsRedirection();
+// app.UseHttpsRedirection();
 app.UseCors("AllowFrontend");
 app.UseAuthentication();
 app.UseAuthorization();
@@ -120,5 +120,5 @@ using (var scope = app.Services.CreateScope())
     db.Database.Migrate();
 }
 
-app.Run(string.Format("http://0.0.0.0:{0}, Environment.GetEnvironmentVariable(PORT) ?? 5000));
+app.Run(string.Format("http://0.0.0.0:{0}", Environment.GetEnvironmentVariable("PORT") ?? "5000"));
 
